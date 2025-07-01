@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Capitão Torrent</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6">
+
+  <div class="max-w-5xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">☠️ Capitão Torrent</h1>
+
+    <input
+      type="text"
+      id="pesquisa"
+      placeholder="Pesquisar jogo..."
+      class="w-full p-3 rounded-lg mb-6 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+
+    <div id="lista-jogos" class="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-6"></div>
+
+    <div class="flex justify-center gap-4">
+      <button id="anterior" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50">Anterior</button>
+      <span id="pagina-atual" class="px-4 py-2 text-gray-300"></span>
+      <button id="proximo" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50">Próximo</button>
+    </div>
+  </div>
+
+  <script>
+    let todosJogos = [];
+    let jogosFiltrados = [];
+    let paginaAtual = 1;
+    const itensPorPagina = 10;
+
+    const lista = document.getElementById('lista-jogos');
+    const input = document.getElementById('pesquisa');
+    const anteriorBtn = document.getElementById('anterior');
+    const proximoBtn = document.getElementById('proximo');
+    const paginaSpan = document.getElementById('pagina-atual');
+
+    function formatarData(dataISO) {
+      const data = new Date(dataISO);
+      return data.toLocaleDateString('pt-BR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+
+    function renderizarLista() {
+      lista.innerHTML = '';
+
+      const inicio = (paginaAtual - 1) * itensPorPagina;
+      const fim = inicio + itensPorPagina;
+      const jogosDaPagina = jogosFiltrados.slice(inicio, fim);
+
+      if (jogosDaPagina.length === 0) {
+        lista.innerHTML = '<p class="text-center col-span-2">Nenhum jogo encontrado.</p>';
+        return;
+      }
+
+      jogosDaPagina.forEach(jogo => {
+        const div = document.createElement('div');
+        div.className = "bg-gray-800 rounded-xl p-4 shadow-md hover:shadow-xl transition";
+
+        div.innerHTML = `
+          <h2 class="text-xl font-semibold mb-2">${jogo.title}</h2>
+          <p class="mb-1">📦 Tamanho: <span class="font-medium">${jogo.fileSize}</span></p>
+          <p class="mb-2">📅 Enviado em: <span class="font-medium">${formatarData(jogo.uploadDate)}</span></p>
+          <a href="${jogo.uris[0]}" target="_blank" class="inline-block mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white transition">Baixar</a>
+        `;
+        lista.appendChild(div);
+      });
+
+      // atualizar botões
+      paginaSpan.textContent = `Página ${paginaAtual} de ${Math.ceil(jogosFiltrados.length / itensPorPagina)}`;
+      anteriorBtn.disabled = paginaAtual === 1;
+      proximoBtn.disabled = fim >= jogosFiltrados.length;
+    }
+
+    input.addEventListener('input', (e) => {
+      const termo = e.target.value.toLowerCase();
+      paginaAtual = 1;
+      jogosFiltrados = todosJogos.filter(jogo =>
+        jogo.title.toLowerCase().includes(termo)
+      );
+      renderizarLista();
+    });
+
+    anteriorBtn.addEventListener('click', () => {
+      if (paginaAtual > 1) {
+        paginaAtual--;
+        renderizarLista();
+      }
+    });
+
+    proximoBtn.addEventListener('click', () => {
+      if ((paginaAtual * itensPorPagina) < jogosFiltrados.length) {
+        paginaAtual++;
+        renderizarLista();
+      }
+    });
+
+    fetch('./jogos.json')
+      .then(res => res.json())
+      .then(data => {
+        todosJogos = data;
+        jogosFiltrados = todosJogos;
+        renderizarLista();
+      })
+      .catch(err => {
+        lista.innerHTML = `<p class="text-red-500 text-center">Erro ao carregar os jogos.</p>`;
+        console.error('Erro ao carregar jogos.json:', err);
+      });
+  </script>
+</body>
+</html>
